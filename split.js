@@ -237,6 +237,27 @@
     return res;
   }
 
+  // ---------- AI scan result (from /api/scan) -> draft fields ----------
+  function normalizeScan(data) {
+    const d = data || {};
+    const amt = (v) => { const c = cents(v); return c ? (c / 100).toFixed(2) : ''; };
+    const items = [];
+    (Array.isArray(d.items) ? d.items : []).forEach((it) => {
+      const name = String((it && it.name) || '').trim() || 'Item';
+      const totalC = cents(it && it.price);
+      const qty = Math.max(1, Math.min(parseInt(it && it.qty, 10) || 1, 20));
+      const each = Math.floor(totalC / qty);
+      for (let k = 0; k < qty; k++) {
+        const c = each + (k === 0 ? totalC - each * qty : 0);
+        items.push({ id: uid(), name, price: (c / 100).toFixed(2), people: [], taxable: true });
+      }
+    });
+    const fees = (Array.isArray(d.fees) ? d.fees : [])
+      .filter((f) => f && cents(f.amount))
+      .map((f) => ({ id: uid(), label: String(f.label || 'Fee').slice(0, 40), amount: amt(f.amount) }));
+    return { name: String(d.name || '').slice(0, 40), items, fees, tax: amt(d.tax), tip: amt(d.tip), total: amt(d.total) };
+  }
+
   // ---------- example data (a real night out, names made generic) ----------
   function demoState() {
     const P = (id, name, payer) => ({ id, name, payer: payer || '' });
@@ -274,7 +295,7 @@
     };
   }
 
-  const api = { cents, money, uid, allocate, payerOf, computeReceipt, computeAll, settle, parseReceiptText, demoState };
+  const api = { cents, money, uid, allocate, payerOf, computeReceipt, computeAll, settle, parseReceiptText, normalizeScan, demoState };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.SplitCore = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -36,3 +36,18 @@ assert.strictEqual(p.total, '93.85');
 assert.strictEqual(p.fees.length, 1);
 
 console.log('All tests passed ✓');
+
+// AI scan result normalization (shape returned by api/scan.js).
+const s = C.normalizeScan({
+  name: 'Roaming Goat',
+  items: [{ name: 'Trio of Dips', qty: 1, price: 18 }, { name: 'Side Pita', qty: 2, price: 8 }, { name: 'Odd', qty: 3, price: 10 }],
+  fees: [{ label: 'SF Mandates (5%)', amount: 8.95 }, { label: 'empty', amount: 0 }],
+  tax: 9.4, tip: 0, total: '$233.15',
+});
+assert.deepStrictEqual(s.items.map((i) => i.price), ['18.00', '4.00', '4.00', '3.34', '3.33', '3.33']);
+assert.strictEqual(s.fees.length, 1);
+assert.strictEqual(s.tax, '9.40');
+assert.strictEqual(s.tip, '');
+assert.strictEqual(s.total, '233.15');
+assert.deepStrictEqual(C.normalizeScan(null).items, []);
+console.log('Scan normalization tests passed ✓');
