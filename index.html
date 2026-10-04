@@ -26,6 +26,33 @@
   .app-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 8px 0 18px; }
   .app-head h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
   .app-head p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+
+  /* top tabs */
+  .views { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin: 0 0 16px; border: 1px solid var(--line-strong);
+           border-radius: 12px; background: var(--card); }
+  .view-tab { height: 40px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-weight: 700; cursor: pointer;
+              display: flex; align-items: center; justify-content: center; text-align: center; }
+  .view-tab[aria-selected="true"] { background: var(--accent); color: var(--on-accent); }
+  .view-tab:focus-visible, .btn:focus-visible, .chip:focus-visible, .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* guide */
+  .lead { font-size: 16px; margin: 0 0 14px; }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .tile { border: 1px solid var(--line); border-radius: 10px; padding: 12px; background: var(--bg); min-width: 0; }
+  .tile b { display: block; margin-bottom: 4px; }
+  .tile span { color: var(--muted); font-size: 13px; }
+  .tile .ico { font-size: 20px; display: block; margin-bottom: 6px; }
+  .howto { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .howto li { display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: start; border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  .howto .n { width: 34px; height: 34px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 800;
+              display: flex; align-items: center; justify-content: center; }
+  .howto div > b:first-child { display: block; margin-bottom: 2px; }
+  .howto div > span { color: var(--muted); font-size: 14px; }
+  .howto div > span b { color: var(--ink); }
+  .rules td, .rules th { white-space: normal; text-align: left; }
+  .rules td:first-child { font-weight: 600; min-width: 96px; }
+  .example { border-left: 4px solid var(--accent); background: var(--bg); border-radius: 0 10px 10px 0; padding: 12px 14px; font-size: 14px; margin-top: 12px; }
+  .tips { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14px; }
   .head-actions { display: flex; gap: 8px; }
 
   /* cards */
@@ -124,6 +151,10 @@
 
   @media (max-width: 520px) {
     .grid2 { grid-template-columns: 1fr; }
+    .tiles { grid-template-columns: 1fr; gap: 8px; }
+    .tile { display: grid; grid-template-columns: 28px 1fr; column-gap: 10px; padding: 10px 12px; }
+    .tile .ico { grid-row: span 2; margin: 0; }
+    .tile b { margin: 0; }
   }
 </style>
 </head>
@@ -140,6 +171,12 @@
     </div>
   </header>
 
+  <nav class="views" role="tablist" aria-label="Sections">
+    <button class="view-tab" role="tab" id="tab-split" aria-controls="view-split" data-act="view" data-v="split">Split a bill</button>
+    <button class="view-tab" role="tab" id="tab-guide" aria-controls="view-guide" data-act="view" data-v="guide">How it works</button>
+  </nav>
+
+  <div id="view-split" role="tabpanel" aria-labelledby="tab-split">
   <section class="card">
     <div class="card-head"><span class="step">Step 1</span><h2>Who was there</h2></div>
     <p class="hint">If someone else is paying for a person, pick who pays and they’ll be grouped together.</p>
@@ -158,6 +195,54 @@
     <div class="card-head"><span class="step">Step 3</span><h2>Who owes what</h2></div>
     <div id="results"></div>
   </section>
+  </div>
+
+  <div id="view-guide" role="tabpanel" aria-labelledby="tab-guide" hidden>
+    <section class="card">
+      <div class="card-head"><span class="step">About</span><h2>What is Split the Tab?</h2></div>
+      <p class="lead">A free tool for splitting restaurant and bar bills fairly. Instead of dividing evenly, everyone pays for what they actually ordered, plus their fair share of tax, tip and fees.</p>
+      <div class="tiles">
+        <div class="tile"><span class="ico" aria-hidden="true">📷</span><b>Scan</b><span>Snap the receipt and items, prices, tax, fees and tip fill in for you.</span></div>
+        <div class="tile"><span class="ico" aria-hidden="true">👆</span><b>Assign</b><span>Tap who had each item. Shared plates split between whoever shared.</span></div>
+        <div class="tile"><span class="ico" aria-hidden="true">💸</span><b>Settle</b><span>See exactly who owes whom, down to the cent.</span></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><span class="step">How to</span><h2>Use it in 4 steps</h2></div>
+      <ol class="howto">
+        <li><span class="n">1</span><div><b>Add who was there</b><span>Type each name. If someone is paying for another person (like a partner), pick “<i>Name</i> pays” so their costs roll up together.</span></div></li>
+        <li><span class="n">2</span><div><b>Add each receipt</b><span>Tap <b>Scan receipt photo</b> to fill everything in, or type items yourself. Set who paid. Use <b>+ Receipt</b> for every stop of the night.</span></div></li>
+        <li><span class="n">3</span><div><b>Assign every item</b><span>Tap an item, then tap the people who had it, or <b>Shared by all</b>. Items still needing someone show in amber.</span></div></li>
+        <li><span class="n">4</span><div><b>Settle up</b><span>Check that the green box matches the receipt total, then send the amounts under <b>Settle up</b>. Use <b>Copy summary</b> to paste them into a group chat.</span></div></li>
+      </ol>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><span class="step">The math</span><h2>How the split is calculated</h2></div>
+      <div class="tbl"><table class="rules">
+        <thead><tr><th>Charge</th><th>How it’s divided</th></tr></thead>
+        <tbody>
+          <tr><td>Items</td><td>Split evenly between the people who had it</td></tr>
+          <tr><td>Tip &amp; fees</td><td>By each person’s share of the items (order more, pay more)</td></tr>
+          <tr><td>Tax</td><td>By each person’s share of <i>taxed</i> items only</td></tr>
+          <tr><td>Covered people</td><td>Added to the person paying for them</td></tr>
+        </tbody>
+      </table></div>
+      <div class="example"><b>Example:</b> You and a friend split $40 of food, and you also have a $20 drink. You had $40 of the $60 bill, or two thirds, so you pay two thirds of the tax, tip and fees too.</div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><span class="step">Tips</span><h2>Good to know</h2></div>
+      <ul class="tips">
+        <li><b>Always double-check scans.</b> Fix any wrong name or price by tapping it.</li>
+        <li><b>Untaxed items</b> (often a bottle of wine): open the item and uncheck <b>Taxed</b>.</li>
+        <li><b>No tip on the receipt?</b> Enter it as a % of the items, or switch to $.</li>
+        <li><b>Your data stays on your phone.</b> Nothing is saved online. With AI scanning on, the photo is sent to Google’s Gemini to be read.</li>
+      </ul>
+      <div class="actions"><button class="btn" data-act="view" data-v="split">Start splitting →</button></div>
+    </section>
+  </div>
 </div>
 
 <script src="split.js"></script>
@@ -524,6 +609,7 @@
         it.people = all ? [] : state.people.map((p) => p.id);
         updateItem(i); refresh(); break;
       }
+      case 'view': showView(b.dataset.v); break;
       case 'tipmode': r.tipMode = b.dataset.v; render(); break;
       case 'add-fee': r.fees.push({ id: C.uid(), label: '', amount: '' }); render(); focusLast('.fee input'); break;
       case 'del-fee': r.fees.splice(i, 1); render(); break;
@@ -532,6 +618,17 @@
       case 'copy': copySummary(b); break;
     }
   });
+
+  function showView(v, skipHash) {
+    const guide = v === 'guide';
+    $('#view-split').hidden = guide;
+    $('#view-guide').hidden = !guide;
+    $('#tab-split').setAttribute('aria-selected', String(!guide));
+    $('#tab-guide').setAttribute('aria-selected', String(guide));
+    if (!skipHash) { try { history.replaceState(null, '', guide ? '#how-it-works' : location.pathname + location.search); } catch (e) { /* ignore */ } }
+    window.scrollTo(0, 0);
+  }
+  window.addEventListener('hashchange', () => showView(location.hash === '#how-it-works' ? 'guide' : 'split', true));
 
   function copySummary(btn) {
     const res = C.computeAll(state);
@@ -549,6 +646,7 @@
   }
 
   render();
+  showView(location.hash === '#how-it-works' ? 'guide' : 'split', true);
 })();
 </script>
 </body>
