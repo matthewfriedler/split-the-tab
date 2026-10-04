@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Split the Tab</title>
+<meta name="description" content="Split restaurant checks fairly: scan receipts, assign items, share tax, tip and fees by what each person ordered.">
+<style>
+  :root {
+    --bg: #f4f5f7; --card: #ffffff; --ink: #16191f; --muted: #667085; --line: #e2e5ea;
+    --accent: #0f766e; --on-accent: #ffffff; --accent-soft: #e3f3f1;
+    --warn: #b45309; --warn-soft: #fef3c7; --ok: #047857; --ok-soft: #d1fae5;
+    --radius: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1014; --card: #171a20; --ink: #e8eaee; --muted: #9aa1ad; --line: #2a2f38;
+      --accent: #2dd4bf; --on-accent: #052421; --accent-soft: #12302d;
+      --warn: #fbbf24; --warn-soft: #33270a; --ok: #34d399; --ok-soft: #0c2a1f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  button, input, select { font: inherit; color: inherit; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 16px 16px 56px; }
+
+  /* header */
+  .app-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 8px 0 18px; }
+  .app-head h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
+  .app-head p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+  .head-actions { display: flex; gap: 8px; }
+
+  /* cards */
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+  .card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .card-head h2 { font-size: 16px; margin: 0; }
+  .step { display: inline-flex; align-items: center; justify-content: center; text-align: center; width: 84px; height: 26px; border-radius: 999px;
+          background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; flex: 0 0 auto; }
+  .hint { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
+  .sub { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 20px 0 8px; }
+
+  /* controls */
+  .in { width: 100%; min-width: 0; height: 40px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+  .in:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 40px; padding: 0 14px; border-radius: 8px;
+         border: 1px solid var(--accent); background: var(--accent); color: var(--on-accent); font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .btn.ghost { background: transparent; color: var(--accent); }
+  .btn.quiet { background: transparent; color: var(--muted); border-color: var(--line); }
+  .btn.small { height: 34px; padding: 0 12px; font-size: 13px; }
+  .btn.warnb { background: transparent; color: var(--warn); border-color: var(--line); }
+  .btn.block { width: 100%; margin-top: 4px; }
+  .icon { flex: 0 0 40px; width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; }
+  .fld { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .fld > span { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* people */
+  .person { display: grid; grid-template-columns: minmax(0,1fr) 136px 40px; gap: 8px; margin-bottom: 8px; }
+  .person select { text-overflow: ellipsis; }
+
+  /* receipt tabs */
+  .tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 14px; }
+  .tab { flex: 0 0 auto; height: 34px; max-width: 180px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: transparent;
+         cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+  .tab.on { background: var(--ink); color: var(--card); border-color: var(--ink); }
+  .tab.add { color: var(--accent); border-style: dashed; }
+
+  /* photo */
+  .photo { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 14px 0 10px; }
+  .status { color: var(--muted); font-size: 13px; flex: 1; min-width: 160px; }
+  .thumb { display: block; max-width: 100%; max-height: 240px; border-radius: 8px; border: 1px solid var(--line); margin-bottom: 10px; }
+  .raw summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+  .raw pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; background: var(--bg); padding: 10px; border-radius: 8px; max-height: 240px; overflow: auto; }
+
+  /* items */
+  .item { border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+  .item.unassigned { border-color: var(--warn); background: var(--warn-soft); }
+  .item-top, .fee { display: grid; grid-template-columns: 1fr 96px 40px; gap: 8px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
+  .chip { height: 30px; max-width: 160px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--card);
+          font-size: 13px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chip.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .chip.everyone { font-weight: 600; }
+  .who-sum { display: flex; align-items: center; gap: 8px; width: 100%; height: 34px; margin-top: 8px; padding: 0 10px; border: 0; border-radius: 8px;
+             background: var(--bg); cursor: pointer; text-align: left; font-size: 13px; }
+  .who-icon { flex: 0 0 auto; font-size: 13px; }
+  .who-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .unassigned .who-sum { background: transparent; color: var(--warn); font-weight: 600; }
+  .who-edit { flex: 0 0 auto; color: var(--accent); font-weight: 600; }
+  .tag { flex: 0 0 auto; height: 20px; padding: 0 8px; display: inline-flex; align-items: center; border-radius: 999px; font-size: 11px;
+         background: var(--card); border: 1px solid var(--line); color: var(--muted); }
+  .item.open { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .item-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+  .taxed { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .empty { color: var(--muted); font-size: 14px; margin: 4px 0 10px; }
+
+  /* charges */
+  .charges { display: grid; gap: 10px; }
+  .tipwrap { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; height: 40px; }
+  .seg button { width: 44px; border: 0; background: transparent; font-weight: 700; cursor: pointer; }
+  .seg button.on { background: var(--ink); color: var(--card); }
+
+  /* status boxes */
+  .box { border-radius: 10px; padding: 10px 12px; font-size: 14px; margin: 12px 0; }
+  .box.ok { background: var(--ok-soft); color: var(--ok); }
+  .box.warn { background: var(--warn-soft); color: var(--warn); }
+  .box ul { margin: 0; padding-left: 18px; }
+
+  /* results */
+  .grand { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 4px 0 12px; }
+  .grand b { font-size: 26px; font-variant-numeric: tabular-nums; }
+  .xfer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 8px; }
+  .xfer .who { min-width: 0; overflow-wrap: anywhere; }
+  .xfer .amt { font-weight: 700; font-size: 18px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 10px 12px; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; border-bottom: 1px solid var(--line); }
+  th:first-child, td:first-child { text-align: left; white-space: normal; min-width: 120px; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; background: var(--bg); }
+  tfoot td { font-weight: 700; border-bottom: 0; }
+  details.break { margin-top: 12px; }
+  details.break > summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+
+  @media (max-width: 520px) {
+    .grid2 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="app-head">
+    <div>
+      <h1>Split the Tab</h1>
+      <p>Everyone pays for what they ordered — tax, tip and fees included.</p>
+    </div>
+    <div class="head-actions">
+      <button class="btn quiet small" data-act="demo">Load example</button>
+      <button class="btn quiet small" data-act="reset">Start over</button>
+    </div>
+  </header>
+
+  <section class="card">
+    <div class="card-head"><span class="step">Step 1</span><h2>Who was there</h2></div>
+    <p class="hint">If someone else is paying for a person, pick who pays and they’ll be grouped together.</p>
+    <div id="people"></div>
+    <button class="btn ghost block" data-act="add-person">+ Add person</button>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><span class="step">Step 2</span><h2>Receipts</h2></div>
+    <p class="hint">Snap a photo to fill in items, then tap who had each one.</p>
+    <div class="tabs" id="tabs"></div>
+    <div id="receipt"></div>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><span class="step">Step 3</span><h2>Who owes what</h2></div>
+    <div id="results"></div>
+  </section>
+</div>
+
+<script src="split.js"></script>
+<script>
+(function () {
+  'use strict';
+  const C = window.SplitCore;
+  const KEY = 'split-the-tab-v1';
+  const TESSERACT = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+  let openItem = null; // id of the item whose "who had it" picker is open
+  const photos = {}; // receiptId -> { url, text, status } (kept in memory only)
+
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const newReceipt = (paidBy) => ({ id: C.uid(), name: '', paidBy: paidBy || '', items: [], fees: [], tax: '', tip: '20', tipMode: 'pct', total: '' });
+  const blank = () => { const me = { id: C.uid(), name: 'Me', payer: '' }; return { people: [me], receipts: [newReceipt(me.id)], active: 0 }; };
+  const load = () => { try { const s = JSON.parse(localStorage.getItem(KEY)); return s && s.people && s.receipts ? s : null; } catch (e) { return null; } };
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* storage unavailable */ } };
+
+  let state = load() || blank();
+  const cur = () => state.receipts[state.active] || state.receipts[0];
+  const nameOf = (id) => { const p = state.people.find((x) => x.id === id); return (p && p.name) || 'Unnamed'; };
+  const groupName = (g) => g.members.map(nameOf).join(' + ');
+
+  // ---------------- rendering ----------------
+  function render() { renderPeople(); renderReceipt(); renderResults(); save(); }
+  function refresh() { renderResults(); save(); }
+
+  function renderPeople() {
+    $('#people').innerHTML = state.people.map((p, i) => `
+      <div class="person">
+        <input class="in" data-scope="person" data-i="${i}" data-f="name" value="${esc(p.name)}" placeholder="Name" aria-label="Name">
+        <select class="in" data-scope="person" data-i="${i}" data-f="payer" aria-label="Who pays for this person">
+          <option value="">Pays self</option>
+          ${state.people.filter((q) => q.id !== p.id).map((q) => `<option value="${q.id}" data-suffix=" pays" ${p.payer === q.id ? 'selected' : ''}>${esc(q.name || 'Unnamed')} pays</option>`).join('')}
+        </select>
+        <button class="icon" data-act="del-person" data-i="${i}" aria-label="Remove person">✕</button>
+      </div>`).join('');
+  }
+
+  function whoSummary(it, everyone) {
+    if (!it.people.length) return 'Tap to choose who had this';
+    if (everyone) return 'Shared by all';
+    return it.people.map(nameOf).join(', ');
+  }
+
+  function itemHTML(it, i) {
+    const everyone = state.people.length > 0 && state.people.every((p) => it.people.includes(p.id));
+    const open = openItem === it.id;
+    return `
+      <div class="item ${it.people.length ? '' : 'unassigned'} ${open ? 'open' : ''}" data-item="${i}">
+        <div class="item-top">
+          <input class="in" data-scope="item" data-i="${i}" data-f="name" value="${esc(it.name)}" placeholder="Item" aria-label="Item name">
+          <input class="in num" inputmode="decimal" data-scope="item" data-i="${i}" data-f="price" value="${esc(it.price)}" placeholder="0.00" aria-label="Price">
+          <button class="icon" data-act="del-item" data-i="${i}" aria-label="Remove item">✕</button>
+        </div>
+        ${open ? '' : `
+        <button class="who-sum" data-act="open-item" data-i="${i}" aria-expanded="false">
+          <span class="who-icon" aria-hidden="true">👥</span>
+          <span class="who-text">${esc(whoSummary(it, everyone))}</span>
+          ${it.taxable === false ? '<span class="tag">No tax</span>' : ''}
+          <span class="who-edit">${it.people.length ? 'Edit' : 'Assign'}</span>
+        </button>`}
+        ${open ? `<div class="chips">
+          <button class="chip everyone ${everyone ? 'on' : ''}" data-act="everyone" data-i="${i}">Shared by all</button>
+          ${state.people.map((p) => `<button class="chip ${it.people.includes(p.id) ? 'on' : ''}" data-act="who" data-i="${i}" data-pid="${p.id}">${esc(p.name || 'Unnamed')}</button>`).join('')}
+        </div>
+        <div class="item-foot">
+          <label class="taxed"><input type="checkbox" data-scope="item" data-i="${i}" data-f="taxable" ${it.taxable !== false ? 'checked' : ''}> Taxed</label>
+          <button class="btn small" data-act="close-item">Done</button>
+        </div>` : ''}
+      </div>`;
+  }
+
+  function renderReceipt() {
+    $('#tabs').innerHTML = state.receipts.map((x, i) =>
+      `<button class="tab ${i === state.active ? 'on' : ''}" data-act="tab" data-i="${i}">${esc(x.name || 'Receipt ' + (i + 1))}</button>`
+    ).join('') + '<button class="tab add" data-act="add-receipt">+ Receipt</button>';
+
+    const r = cur();
+    const ph = photos[r.id] || {};
+    $('#receipt').innerHTML = `
+      <div class="grid2">
+        <label class="fld"><span>Restaurant</span><input class="in" data-scope="receipt" data-f="name" value="${esc(r.name)}" placeholder="e.g. Lobalita"></label>
+        <label class="fld"><span>Paid by</span>
+          <select class="in" data-scope="receipt" data-f="paidBy">
+            <option value="">Choose…</option>
+            ${state.people.map((p) => `<option value="${p.id}" ${r.paidBy === p.id ? 'selected' : ''}>${esc(p.name || 'Unnamed')}</option>`).join('')}
+          </select>
+        </label>
+      </div>
+
+      <div class="photo">
+        <label class="btn ghost"><input type="file" accept="image/*" id="photo-in" hidden>📷 Scan receipt photo</label>
+        <span class="status" id="scan-status">${esc(ph.status || 'Reads items, tax, tip and fees. Always double-check the results.')}</span>
+      </div>
+      ${ph.url ? `<img class="thumb" src="${ph.url}" alt="Receipt photo">` : ''}
+      ${ph.text ? `<details class="raw"><summary>Show scanned text</summary><pre>${esc(ph.text)}</pre></details>` : ''}
+
+      <h3 class="sub">Items</h3>
+      <div id="items">${r.items.map(itemHTML).join('') || '<p class="empty">No items yet — scan a photo or add them by hand.</p>'}</div>
+      <button class="btn ghost block" data-act="add-item">+ Add item</button>
+
+      <h3 class="sub">Tax, tip &amp; fees</h3>
+      <div class="charges">
+        <div class="grid2">
+          <label class="fld"><span>Tax</span><input class="in num" inputmode="decimal" data-scope="receipt" data-f="tax" value="${esc(r.tax)}" placeholder="0.00"></label>
+          <div class="fld"><span>Tip ${r.tipMode === 'pct' ? '(% of items)' : '($)'}</span>
+            <div class="tipwrap">
+              <input class="in num" inputmode="decimal" data-scope="receipt" data-f="tip" value="${esc(r.tip)}" placeholder="0" aria-label="Tip">
+              <div class="seg" role="group" aria-label="Tip type">
+                <button class="${r.tipMode === 'pct' ? 'on' : ''}" data-act="tipmode" data-v="pct">%</button>
+                <button class="${r.tipMode !== 'pct' ? 'on' : ''}" data-act="tipmode" data-v="amt">$</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        ${r.fees.map((f, i) => `
+          <div class="fee">
+            <input class="in" data-scope="fee" data-i="${i}" data-f="label" value="${esc(f.label)}" placeholder="Fee name" aria-label="Fee name">
+            <input class="in num" inputmode="decimal" data-scope="fee" data-i="${i}" data-f="amount" value="${esc(f.amount)}" placeholder="0.00" aria-label="Fee amount">
+            <button class="icon" data-act="del-fee" data-i="${i}" aria-label="Remove fee">✕</button>
+          </div>`).join('')}
+        <button class="btn ghost block" data-act="add-fee">+ Add fee (SF mandate, service charge…)</button>
+        <label class="fld"><span>Total charged (optional — used to double-check)</span>
+          <input class="in num" inputmode="decimal" data-scope="receipt" data-f="total" value="${esc(r.total)}" placeholder="0.00"></label>
+      </div>
+      <div id="check"></div>
+      <div class="actions"><button class="btn warnb small" data-act="del-receipt">Delete this receipt</button></div>`;
+
+    $('#photo-in').addEventListener('change', onPhoto);
+  }
+
+  function renderResults() {
+    const res = C.computeAll(state);
+    const groups = Object.values(res.groups).sort((a, b) => b.total - a.total);
+    const m = C.money;
+
+    // Per-receipt check under the receipt editor
+    const ri = res.receipts[state.active];
+    const r = cur();
+    if (ri && $('#check')) {
+      const notes = [];
+      if (ri.unassigned) notes.push(`${m(ri.unassigned)} of items aren’t assigned to anyone yet.`);
+      if (ri.printed != null && ri.printed !== ri.computed) notes.push(`Adds up to ${m(ri.computed)}, but the total charged is ${m(ri.printed)} (off by ${m(Math.abs(ri.printed - ri.computed))}).`);
+      if (!r.paidBy) notes.push('Pick who paid this receipt.');
+      $('#check').innerHTML = notes.length
+        ? `<div class="box warn"><ul>${notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul></div>`
+        : `<div class="box ok">✓ ${m(ri.itemsTotal)} items + ${m(ri.feeTotal)} fees + ${m(ri.tax)} tax + ${m(ri.tip)} tip = <b>${m(ri.computed)}</b>${ri.printed != null ? ' — matches the receipt' : ''}</div>`;
+    }
+
+    if (!state.receipts.some((x) => x.items.length)) {
+      $('#results').innerHTML = '<p class="empty">Add items to a receipt to see the split.</p>';
+      return;
+    }
+
+    // Warnings across all receipts
+    const warns = [];
+    res.receipts.forEach((x, i) => {
+      const label = state.receipts[i].name || 'Receipt ' + (i + 1);
+      if (x.unassigned) warns.push(`${label}: ${m(x.unassigned)} unassigned`);
+      if (!state.receipts[i].paidBy) warns.push(`${label}: who paid?`);
+    });
+
+    const xfers = res.transfers.length
+      ? res.transfers.map((t) => `
+          <div class="xfer"><span class="who"><b>${esc(nameOf(t.from))}</b> pays <b>${esc(nameOf(t.to))}</b></span><span class="amt">${m(t.amount)}</span></div>`).join('')
+      : '<p class="empty">Nobody owes anybody yet.</p>';
+
+    const rcols = state.receipts.map((x, i) => `<th>${esc(x.name || 'Receipt ' + (i + 1))}</th>`).join('');
+    const rows = groups.map((g) => `<tr><td>${esc(groupName(g))}</td>${state.receipts.map((x) => `<td>${m(g.perReceipt[x.id] || 0)}</td>`).join('')}<td><b>${m(g.total)}</b></td></tr>`).join('');
+    const foot = `<tr><td>Total</td>${res.receipts.map((x) => `<td>${m(x.computed - x.unassigned)}</td>`).join('')}<td>${m(groups.reduce((s, g) => s + g.total, 0))}</td></tr>`;
+
+    const breakdowns = res.receipts.map((x, i) => `
+      <details class="break"><summary>${esc(state.receipts[i].name || 'Receipt ' + (i + 1))} — ${m(x.computed)}</summary>
+        <div class="tbl"><table>
+          <thead><tr><th>Payer</th><th>Items</th><th>Fees</th><th>Tax</th><th>Tip</th><th>Owes</th></tr></thead>
+          <tbody>${groups.map((g) => { const gr = x.groupRows[g.id]; return `<tr><td>${esc(groupName(g))}</td><td>${m(gr.items)}</td><td>${m(gr.fees)}</td><td>${m(gr.tax)}</td><td>${m(gr.tip)}</td><td><b>${m(gr.total)}</b></td></tr>`; }).join('')}</tbody>
+        </table></div>
+      </details>`).join('');
+
+    $('#results').innerHTML = `
+      <div class="grand"><span class="hint" style="margin:0">Total for the night</span><b>${m(res.grand)}</b></div>
+      ${warns.length ? `<div class="box warn"><ul>${warns.map((w) => `<li>${esc(w)}</li>`).join('')}</ul></div>` : ''}
+      <h3 class="sub" style="margin-top:4px">Settle up</h3>
+      ${xfers}
+      <h3 class="sub">Each payer’s share</h3>
+      <div class="tbl"><table><thead><tr><th>Payer</th>${rcols}<th>Total</th></tr></thead><tbody>${rows}</tbody><tfoot>${foot}</tfoot></table></div>
+      ${breakdowns}
+      <div class="actions"><button class="btn small" data-act="copy">Copy summary</button></div>`;
+  }
+
+  // ---------------- photo scanning ----------------
+  let tesseractLoading = null;
+  function loadTesseract() {
+    if (window.Tesseract) return Promise.resolve();
+    if (!tesseractLoading) {
+      tesseractLoading = new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = TESSERACT; s.onload = resolve; s.onerror = () => reject(new Error('Could not load the scanner.'));
+        document.head.appendChild(s);
+      });
+    }
+    return tesseractLoading;
+  }
+
+  function setStatus(rid, msg) {
+    photos[rid] = Object.assign(photos[rid] || {}, { status: msg });
+    if (cur().id === rid && $('#scan-status')) $('#scan-status').textContent = msg;
+  }
+
+  async function onPhoto(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const r = cur();
+    photos[r.id] = { url: URL.createObjectURL(file), status: 'Loading scanner…' };
+    renderReceipt(); refresh();
+    try {
+      await loadTesseract();
+      const { data } = await window.Tesseract.recognize(file, 'eng', {
+        logger: (msg) => { if (msg.status === 'recognizing text') setStatus(r.id, `Reading receipt… ${Math.round(msg.progress * 100)}%`); },
+      });
+      const parsed = C.parseReceiptText(data.text);
+      photos[r.id].text = data.text;
+      if (r.items.length && !confirm('Replace this receipt’s current items with the scanned ones?')) {
+        setStatus(r.id, 'Scan finished — kept your existing items.');
+      } else {
+        if (!r.name && parsed.name) r.name = parsed.name;
+        r.items = parsed.items;
+        r.fees = parsed.fees;
+        if (parsed.tax) r.tax = parsed.tax;
+        if (parsed.tip) { r.tip = parsed.tip; r.tipMode = 'amt'; }
+        if (parsed.total) r.total = parsed.total;
+        photos[r.id].status = `Found ${parsed.items.length} item${parsed.items.length === 1 ? '' : 's'}. Check names and prices, then tap who had what.`;
+      }
+    } catch (err) {
+      photos[r.id].status = 'Couldn’t read that photo (' + err.message + '). You can enter items by hand.';
+    }
+    render();
+  }
+
+  // ---------------- events ----------------
+  document.addEventListener('input', (e) => {
+    const t = e.target, sc = t.dataset.scope;
+    if (!sc) return;
+    const r = cur(), f = t.dataset.f, i = +t.dataset.i;
+    const val = t.type === 'checkbox' ? t.checked : t.value;
+    if (sc === 'person') {
+      const p = state.people[i];
+      p[f] = val;
+      if (f === 'name') { // update labels without rebuilding inputs
+        document.querySelectorAll(`[data-pid="${p.id}"]`).forEach((el) => (el.textContent = val || 'Unnamed'));
+        document.querySelectorAll(`option[value="${p.id}"]`).forEach((o) => (o.textContent = (val || 'Unnamed') + (o.dataset.suffix || '')));
+      } else { renderPeople(); renderReceipt(); }
+    } else if (sc === 'receipt') {
+      r[f] = val;
+      if (f === 'name') { const tab = document.querySelectorAll('.tab')[state.active]; if (tab) tab.textContent = val || 'Receipt ' + (state.active + 1); }
+    } else if (sc === 'item') r.items[i][f] = val;
+    else if (sc === 'fee') r.fees[i][f] = val;
+    refresh();
+  });
+
+  document.addEventListener('change', (e) => {
+    if (e.target.dataset.scope === 'person' && e.target.dataset.f === 'name') renderReceipt(), refresh();
+  });
+
+  function updateItem(i) {
+    const el = document.querySelector(`[data-item="${i}"]`);
+    if (el) el.outerHTML = itemHTML(cur().items[i], i);
+  }
+
+  function focusLast(sel) { const els = document.querySelectorAll(sel); if (els.length) els[els.length - 1].focus(); }
+
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-act]');
+    if (!b) return;
+    const act = b.dataset.act, i = +b.dataset.i, r = cur();
+    switch (act) {
+      case 'add-person':
+        state.people.push({ id: C.uid(), name: '', payer: '' }); render(); focusLast('#people input'); break;
+      case 'del-person': {
+        const id = state.people[i].id;
+        state.people.splice(i, 1);
+        state.people.forEach((p) => { if (p.payer === id) p.payer = ''; });
+        state.receipts.forEach((x) => { if (x.paidBy === id) x.paidBy = ''; x.items.forEach((it) => (it.people = it.people.filter((p) => p !== id))); });
+        render(); break;
+      }
+      case 'tab': state.active = i; openItem = null; render(); break;
+      case 'add-receipt':
+        state.receipts.push(newReceipt(r.paidBy || (state.people[0] && state.people[0].id)));
+        state.active = state.receipts.length - 1; render(); break;
+      case 'del-receipt':
+        if (!confirm('Delete this receipt?')) break;
+        state.receipts.splice(state.active, 1);
+        if (!state.receipts.length) state.receipts.push(newReceipt(state.people[0] && state.people[0].id));
+        state.active = Math.max(0, state.active - 1); render(); break;
+      case 'add-item':
+        r.items.push({ id: C.uid(), name: '', price: '', people: [], taxable: true }); openItem = r.items[r.items.length - 1].id; render(); focusLast('#items input[data-f="name"]'); break;
+      case 'del-item': r.items.splice(i, 1); render(); break;
+      case 'open-item': openItem = r.items[i].id; renderReceipt(); refresh(); break;
+      case 'close-item': openItem = null; renderReceipt(); refresh(); break;
+      case 'who': {
+        const it = r.items[i], pid = b.dataset.pid;
+        it.people = it.people.includes(pid) ? it.people.filter((x) => x !== pid) : it.people.concat(pid);
+        updateItem(i); refresh(); break;
+      }
+      case 'everyone': {
+        const it = r.items[i];
+        const all = state.people.every((p) => it.people.includes(p.id));
+        it.people = all ? [] : state.people.map((p) => p.id);
+        updateItem(i); refresh(); break;
+      }
+      case 'tipmode': r.tipMode = b.dataset.v; render(); break;
+      case 'add-fee': r.fees.push({ id: C.uid(), label: '', amount: '' }); render(); focusLast('.fee input'); break;
+      case 'del-fee': r.fees.splice(i, 1); render(); break;
+      case 'demo': if (confirm('Replace everything with the example night out?')) { state = C.demoState(); render(); } break;
+      case 'reset': if (confirm('Clear all people and receipts?')) { state = blank(); render(); } break;
+      case 'copy': copySummary(b); break;
+    }
+  });
+
+  function copySummary(btn) {
+    const res = C.computeAll(state);
+    const lines = ['Split the Tab — total ' + C.money(res.grand), ''];
+    Object.values(res.groups).sort((a, b) => b.total - a.total)
+      .forEach((g) => lines.push(`${groupName(g)}: ${C.money(g.total)}`));
+    if (res.transfers.length) {
+      lines.push('');
+      res.transfers.forEach((t) => lines.push(`${nameOf(t.from)} → ${nameOf(t.to)}: ${C.money(t.amount)}`));
+    }
+    const text = lines.join('\n');
+    const done = () => { const o = btn.textContent; btn.textContent = 'Copied ✓'; setTimeout(() => (btn.textContent = o), 1500); };
+    if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, () => prompt('Copy this:', text));
+    else prompt('Copy this:', text);
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
