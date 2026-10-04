@@ -3,21 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f6f3ee">
 <title>Split the Tab</title>
 <meta name="description" content="Split restaurant checks fairly: scan receipts, assign items, share tax, tip and fees by what each person ordered.">
 <style>
+  /* Paper & Clay — every text pairing meets WCAG AA (4.5:1); borders and focus meet 3:1 */
   :root {
-    --bg: #f4f5f7; --card: #ffffff; --ink: #16191f; --muted: #667085; --line: #e2e5ea;
-    --accent: #0f766e; --on-accent: #ffffff; --accent-soft: #e3f3f1;
-    --warn: #b45309; --warn-soft: #fef3c7; --ok: #047857; --ok-soft: #d1fae5;
+    color-scheme: light;
+    --bg: #f6f3ee; --card: #ffffff; --ink: #1d1b18; --muted: #5c574f;
+    --line: #e6e1d8;        /* decorative dividers and card edges */
+    --line-strong: #8c857a; /* borders on things you tap or type in */
+    --accent: #a63d24; --on-accent: #ffffff; --accent-soft: #f7e4dd;
+    --warn: #8a4b00; --warn-soft: #fdf0d5; --ok: #25643a; --ok-soft: #e2f1e6;
     --radius: 12px;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0e1014; --card: #171a20; --ink: #e8eaee; --muted: #9aa1ad; --line: #2a2f38;
-      --accent: #2dd4bf; --on-accent: #052421; --accent-soft: #12302d;
-      --warn: #fbbf24; --warn-soft: #33270a; --ok: #34d399; --ok-soft: #0c2a1f;
-    }
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
@@ -40,17 +38,17 @@
   .sub { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 20px 0 8px; }
 
   /* controls */
-  .in { width: 100%; min-width: 0; height: 40px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+  .in { width: 100%; min-width: 0; height: 40px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--bg); }
   .in:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
   .num { text-align: right; font-variant-numeric: tabular-nums; }
   .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 40px; padding: 0 14px; border-radius: 8px;
          border: 1px solid var(--accent); background: var(--accent); color: var(--on-accent); font-weight: 600; cursor: pointer; white-space: nowrap; }
   .btn.ghost { background: transparent; color: var(--accent); }
-  .btn.quiet { background: transparent; color: var(--muted); border-color: var(--line); }
+  .btn.quiet { background: transparent; color: var(--muted); border-color: var(--line-strong); }
   .btn.small { height: 34px; padding: 0 12px; font-size: 13px; }
-  .btn.warnb { background: transparent; color: var(--warn); border-color: var(--line); }
+  .btn.warnb { background: transparent; color: var(--warn); border-color: var(--line-strong); }
   .btn.block { width: 100%; margin-top: 4px; }
-  .icon { flex: 0 0 40px; width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; }
+  .icon { flex: 0 0 40px; width: 40px; height: 40px; border: 1px solid var(--line-strong); border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; }
   .fld { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
   .fld > span { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -61,7 +59,7 @@
 
   /* receipt tabs */
   .tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 14px; }
-  .tab { flex: 0 0 auto; height: 34px; max-width: 180px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: transparent;
+  .tab { flex: 0 0 auto; height: 34px; max-width: 180px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line-strong); background: transparent;
          cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
   .tab.on { background: var(--ink); color: var(--card); border-color: var(--ink); }
   .tab.add { color: var(--accent); border-style: dashed; }
@@ -78,7 +76,7 @@
   .item.unassigned { border-color: var(--warn); background: var(--warn-soft); }
   .item-top, .fee { display: grid; grid-template-columns: 1fr 96px 40px; gap: 8px; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
-  .chip { height: 30px; max-width: 160px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--card);
+  .chip { height: 30px; max-width: 160px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--card);
           font-size: 13px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .chip.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
   .chip.everyone { font-weight: 600; }
@@ -98,7 +96,7 @@
   /* charges */
   .charges { display: grid; gap: 10px; }
   .tipwrap { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
-  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; height: 40px; }
+  .seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; height: 40px; }
   .seg button { width: 44px; border: 0; background: transparent; font-weight: 700; cursor: pointer; }
   .seg button.on { background: var(--ink); color: var(--card); }
 
